@@ -1,0 +1,263 @@
+{
+  "entities": {
+    "UserProfilePublic": {
+      "title": "UserProfilePublic",
+      "description": "Non-PII citizen profile preferences and role metadata.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ageMode": {
+          "type": "string",
+          "enum": ["standard", "senior", "youth"]
+        },
+        "preferredLang": {
+          "type": "string",
+          "enum": ["en", "hi", "ta", "es", "fr"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "ageMode", "preferredLang", "createdAt", "updatedAt"]
+    },
+    "UserProfilePrivate": {
+      "title": "UserProfilePrivate",
+      "description": "Isolated PII record strictly accessible only by the owning user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "CivicReport": {
+      "title": "CivicReport",
+      "description": "Public civic infrastructure issue report with routed department and lifecycle status.",
+      "type": "object",
+      "properties": {
+        "ticketId": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 24,
+          "pattern": "^CVC-[0-9]{4}-[0-9]{6}$"
+        },
+        "authorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorDisplayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 140
+        },
+        "description": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        },
+        "category": {
+          "type": "string",
+          "enum": ["pothole", "garbage", "streetlight", "water", "drainage", "traffic"]
+        },
+        "department": {
+          "type": "string",
+          "enum": [
+            "Roads & PWD",
+            "Solid Waste Management",
+            "Electricity Board",
+            "Water Supply & Sewerage",
+            "Stormwater Drainage",
+            "Traffic Engineering"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "urgent"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["submitted", "acknowledged", "in_progress", "resolved"]
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "incidentLocation": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 260
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "upvotesCount": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ticketId",
+        "authorUid",
+        "authorDisplayName",
+        "title",
+        "description",
+        "category",
+        "department",
+        "priority",
+        "status",
+        "lat",
+        "lng",
+        "incidentLocation",
+        "photoUrl",
+        "isPublic",
+        "upvotesCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReportVote": {
+      "title": "ReportVote",
+      "description": "Citizen confirmation vote verifying a reported civic issue.",
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["reportId", "userId", "createdAt"]
+    },
+    "ReportActivity": {
+      "title": "ReportActivity",
+      "description": "Audit log of status changes and official department updates for a civic report.",
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "fromStatus": {
+          "type": "string",
+          "enum": ["none", "submitted", "acknowledged", "in_progress", "resolved"]
+        },
+        "toStatus": {
+          "type": "string",
+          "enum": ["submitted", "acknowledged", "in_progress", "resolved"]
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "isReportPublic": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["reportId", "actorUid", "actorName", "fromStatus", "toStatus", "note", "isReportPublic", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfilePublic" },
+      "description": "Public citizen display preferences (age accessibility mode and language)."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserProfilePrivate" },
+      "description": "Isolated user PII (email address) restricted strictly to the owning user."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfilePublic" },
+      "description": "Registry of municipal administrators authorized to triage and update any report."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/CivicReport" },
+      "description": "Civic infrastructure issue reports visible on the live municipal map."
+    },
+    "/reports/{reportId}/votes/{voterId}": {
+      "schema": { "$ref": "#/entities/ReportVote" },
+      "description": "Per-user confirmation votes linked atomically to report upvotesCount."
+    },
+    "/reports/{reportId}/activity/{activityId}": {
+      "schema": { "$ref": "#/entities/ReportActivity" },
+      "description": "Immutable status transition audit trail for each civic report."
+    }
+  }
+}

@@ -1,0 +1,275 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'aron.27062007@gmail.com'
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'ageMode', 'preferredLang', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'ageMode', 'preferredLang', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.ageMode is string && data.ageMode in ['standard', 'senior', 'youth']
+        && data.preferredLang is string && data.preferredLang in ['en', 'hi', 'ta', 'es', 'fr']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCategory(cat) {
+      return cat is string && cat in ['pothole', 'garbage', 'streetlight', 'water', 'drainage', 'traffic'];
+    }
+
+    function isValidDepartment(dept) {
+      return dept is string && dept in [
+        'Roads & PWD',
+        'Solid Waste Management',
+        'Electricity Board',
+        'Water Supply & Sewerage',
+        'Stormwater Drainage',
+        'Traffic Engineering'
+      ];
+    }
+
+    function isValidPriority(priority) {
+      return priority is string && priority in ['low', 'medium', 'high', 'urgent'];
+    }
+
+    function isValidStatus(status) {
+      return status is string && status in ['submitted', 'acknowledged', 'in_progress', 'resolved'];
+    }
+
+    function isValidCivicReport(data) {
+      return data.keys().hasAll([
+          'ticketId', 'authorUid', 'authorDisplayName', 'title', 'description',
+          'category', 'department', 'priority', 'status', 'lat', 'lng',
+          'incidentLocation', 'photoUrl', 'isPublic', 'upvotesCount', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ticketId', 'authorUid', 'authorDisplayName', 'title', 'description',
+          'category', 'department', 'priority', 'status', 'lat', 'lng',
+          'incidentLocation', 'photoUrl', 'isPublic', 'upvotesCount', 'createdAt', 'updatedAt'
+        ])
+        && data.ticketId is string && data.ticketId.size() >= 15 && data.ticketId.size() <= 24 && data.ticketId.matches('^CVC-[0-9]{4}-[0-9]{6}$')
+        && data.authorUid is string && isValidId(data.authorUid)
+        && data.authorDisplayName is string && data.authorDisplayName.size() >= 1 && data.authorDisplayName.size() <= 80
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 140
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 2000
+        && isValidCategory(data.category)
+        && isValidDepartment(data.department)
+        && isValidPriority(data.priority)
+        && isValidStatus(data.status)
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.incidentLocation is string && data.incidentLocation.size() >= 2 && data.incidentLocation.size() <= 260
+        && data.photoUrl is string && data.photoUrl.size() <= 500
+        && data.isPublic is bool
+        && data.upvotesCount is int && data.upvotesCount >= 0 && data.upvotesCount <= 1000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReportVote(data, reportId, voterId) {
+      return data.keys().hasAll(['reportId', 'userId', 'createdAt'])
+        && data.keys().hasOnly(['reportId', 'userId', 'createdAt'])
+        && data.reportId is string && data.reportId == reportId && isValidId(data.reportId)
+        && data.userId is string && data.userId == voterId && isValidId(data.userId)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidReportActivity(data, reportId) {
+      return data.keys().hasAll(['reportId', 'actorUid', 'actorName', 'fromStatus', 'toStatus', 'note', 'isReportPublic', 'createdAt'])
+        && data.keys().hasOnly(['reportId', 'actorUid', 'actorName', 'fromStatus', 'toStatus', 'note', 'isReportPublic', 'createdAt'])
+        && data.reportId is string && data.reportId == reportId && isValidId(data.reportId)
+        && data.actorUid is string && isValidId(data.actorUid)
+        && data.actorName is string && data.actorName.size() >= 1 && data.actorName.size() <= 80
+        && data.fromStatus is string && data.fromStatus in ['none', 'submitted', 'acknowledged', 'in_progress', 'resolved']
+        && isValidStatus(data.toStatus)
+        && data.note is string && data.note.size() >= 1 && data.note.size() <= 400
+        && data.isReportPublic is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNextStatus(prevStatus, nextStatus) {
+      return (prevStatus == 'submitted' && nextStatus == 'acknowledged')
+        || (prevStatus == 'acknowledged' && nextStatus == 'in_progress')
+        || (prevStatus == 'in_progress' && nextStatus == 'resolved');
+    }
+
+    // --- Collection Rules ---
+
+    // Admins registry (read-only for verified users to check own admin status, no client writes)
+    match /admins/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId;
+      allow list, write: if false;
+    }
+
+    // Users public preferences (non-PII)
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserPublic(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserPublic(incoming(), userId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'ageMode', 'preferredLang', 'updatedAt'])
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+
+      // Isolated PII subcollection
+      match /private/{docId} {
+        allow get: if isVerifiedUser() && isValidId(userId) && isValidId(docId) && (request.auth.uid == userId || isAdmin());
+        allow list: if false;
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && docId == 'info'
+          && request.auth.uid == userId
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && docId == 'info'
+          && request.auth.uid == userId
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt'])
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time;
+        allow delete: if false;
+      }
+    }
+
+    // Public Civic Reports
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && (existing().isPublic == true || (isVerifiedUser() && existing().authorUid == request.auth.uid) || isAdmin());
+      allow list: if existing().isPublic == true;
+
+      allow create: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidCivicReport(incoming())
+        && incoming().authorUid == request.auth.uid
+        && incoming().status == 'submitted'
+        && incoming().upvotesCount == 0
+        && incoming().isPublic == true
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidCivicReport(incoming())
+        && incoming().ticketId == existing().ticketId
+        && incoming().authorUid == existing().authorUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Municipal Admin override
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'priority', 'department', 'category', 'updatedAt']))
+          // Tier 2a: Author editing details while still submitted
+          || (
+            existing().authorUid == request.auth.uid
+            && existing().status == 'submitted'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'department', 'priority', 'updatedAt'])
+          )
+          // Tier 2b: Author advancing lifecycle step-by-step (not resolved yet)
+          || (
+            existing().authorUid == request.auth.uid
+            && existing().status != 'resolved'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && isValidNextStatus(existing().status, incoming().status)
+          )
+          // Tier 2c: Community citizen confirmation vote (atomic with votes/{uid})
+          || (
+            existing().status != 'resolved'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['upvotesCount', 'updatedAt'])
+            && incoming().upvotesCount == existing().upvotesCount + 1
+            && !exists(/databases/$(database)/documents/reports/$(reportId)/votes/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/reports/$(reportId)/votes/$(request.auth.uid))
+          )
+        );
+
+      allow delete: if isAdmin() && isValidId(reportId);
+
+      // Subcollection: Confirmation votes (Master Gate + Atomicity Guarantee)
+      match /votes/{voterId} {
+        allow get: if isVerifiedUser() && isValidId(reportId) && isValidId(voterId) && request.auth.uid == voterId;
+        allow list: if false;
+        allow create: if isVerifiedUser()
+          && isValidId(reportId)
+          && isValidId(voterId)
+          && request.auth.uid == voterId
+          && isValidReportVote(incoming(), reportId, voterId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/reports/$(reportId))
+          && getAfter(/databases/$(database)/documents/reports/$(reportId)).data.upvotesCount == get(/databases/$(database)/documents/reports/$(reportId)).data.upvotesCount + 1;
+        allow update, delete: if false;
+      }
+
+      // Subcollection: Status activity audit trail (Master Gate + Zero get() in list)
+      match /activity/{activityId} {
+        allow get: if isValidId(reportId) && isValidId(activityId) && existing().isReportPublic == true;
+        allow list: if existing().isReportPublic == true;
+        allow create: if isVerifiedUser()
+          && isValidId(reportId)
+          && isValidId(activityId)
+          && isValidReportActivity(incoming(), reportId)
+          && incoming().actorUid == request.auth.uid
+          && incoming().createdAt == request.time
+          && existsAfter(/databases/$(database)/documents/reports/$(reportId))
+          && incoming().isReportPublic == getAfter(/databases/$(database)/documents/reports/$(reportId)).data.isPublic
+          && (
+            getAfter(/databases/$(database)/documents/reports/$(reportId)).data.authorUid == request.auth.uid
+            || isAdmin()
+          );
+        allow update, delete: if false;
+      }
+    }
+  }
+}

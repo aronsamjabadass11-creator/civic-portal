@@ -1,0 +1,6 @@
+{
+  "name": "Civic Report Portal",
+  "description": "Real-time municipal infrastructure reporting, automated department routing, and live Google Maps tracking accessible across age groups and languages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
